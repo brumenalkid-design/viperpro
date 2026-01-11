@@ -8,29 +8,34 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# 1. LIMPEZA DE ELIMINAÇÃO: Remove arquivos que causam conflito de cache
-RUN rm -rf bootstrap/cache/*.php storage/framework/sessions/* .env
+# 1. LIMPEZA BRUTAL NO BUILD (Corta o mal pela raiz)
+# Removemos qualquer arquivo dentro de bootstrap/cache exceto o .gitignore
+# Removemos o .env para garantir que ele use as variáveis da Render
+RUN find bootstrap/cache -type f -not -name '.gitignore' -delete \
+    && rm -rf storage/framework/sessions/* \
+    && rm -f .env
 
-# 2. COMPOSER
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
 
-# 3. O GOLPE DE MESTRE: Força a Cipher e a Key diretamente no arquivo config/app.php
-# Isso impede que o Laravel reclame de "Unsupported Cipher" porque o valor estará 'hardcoded' no boot
-RUN sed -i "/'cipher' =>/c\'cipher' => 'AES-256-CBC'," config/app.php && \
-    sed -i "/'key' =>/c\'key' => 'base64:OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ='," config/app.php
+# 2. INJEÇÃO DIRETA DE CHAVE (Não depende de arquivo .env)
+# Vamos definir a chave como uma variável de ambiente do sistema
+ENV APP_KEY=base64:OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ=
+ENV APP_CIPHER=AES-256-CBC
 
-# 4. PERMISSÕES
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# 5. ENTRYPOINT FINAL: Sem chance de erro
+# 3. ENTRYPOINT SEM CACHE (O fim do ciclo)
+# O comando 'config:clear' garante que o Laravel esqueça qualquer configuração anterior
 ENTRYPOINT ["/bin/sh", "-c", " \
-    php artisan jwt:secret --force && \
     php artisan config:clear && \
     php artisan cache:clear && \
+    php artisan view:clear && \
+    php artisan route:clear && \
+    php artisan jwt:secret --force && \
     php artisan migrate --force && \
     apache2-foreground"]
