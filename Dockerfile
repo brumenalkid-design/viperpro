@@ -11,16 +11,12 @@ COPY . .
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
 
-# Permissões totais para o sistema de arquivos
+# Permissões cruciais para o Laravel escrever novos caches
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# O COMANDO RADICAL: 
-# 1. Deleta fisicamente os arquivos de cache (rm -rf)
-# 2. Gera chaves novas e válidas de 32 bytes
-# 3. Limpa caches internos do Artisan
-# 4. Sobe o site ignorando o passado
-ENTRYPOINT ["/bin/sh", "-c", "rm -rf bootstrap/cache/*.php storage/framework/cache/data/* storage/framework/views/*.php storage/framework/sessions/* && php artisan key:generate --force && php artisan jwt:secret --force && php artisan config:clear && php artisan cache:clear && php artisan view:clear && php artisan route:clear && php artisan migrate --force && apache2-foreground"]
+# O COMANDO RADICAL: Remove caches físicos e gera chaves novas no boot
+ENTRYPOINT ["/bin/sh", "-c", "rm -f bootstrap/cache/*.php storage/framework/sessions/* && php artisan key:generate --force && php artisan jwt:secret --force && php artisan config:clear && php artisan cache:clear && php artisan migrate --force && apache2-foreground"]
