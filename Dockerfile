@@ -11,13 +11,12 @@ COPY . .
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
 
-# Garante que o Laravel consiga criar os arquivos de sessão e cache
+# Permissões de pasta
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# O COMANDO QUE QUEBRA O LOOP: 
-# 1. Gera APP_KEY (32 bytes) 2. Gera JWT_SECRET 3. Limpa caches 4. Sobe o site
-ENTRYPOINT ["/bin/sh", "-c", "php artisan key:generate --force && php artisan jwt:secret --force && php artisan config:clear && php artisan cache:clear && php artisan migrate --force && apache2-foreground"]
+# O PONTO DE INFLEXÃO: Removemos o arquivo de cache físico e geramos chaves novas
+ENTRYPOINT ["/bin/sh", "-c", "rm -f bootstrap/cache/config.php && php artisan key:generate --force && php artisan jwt:secret --force && php artisan config:clear && php artisan cache:clear && php artisan migrate --force && apache2-foreground"]
