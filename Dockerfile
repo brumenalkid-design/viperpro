@@ -13,15 +13,15 @@ COPY . .
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
 
-# Permissões
+# Permissões fundamentais
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# --- O COMANDO DA VITÓRIA ---
-# 1. Apaga fisicamente os arquivos de cache e sessões velhas
-# 2. Gera a APP_KEY do zero (32 caracteres)
-# 3. Limpa o cache interno do Laravel
-ENTRYPOINT ["/bin/sh", "-c", "rm -rf bootstrap/cache/*.php storage/framework/sessions/* storage/framework/views/*.php storage/framework/cache/data/* && php artisan key:generate --force && php artisan jwt:secret --force && php artisan config:clear && php artisan cache:clear && php artisan migrate --force && apache2-foreground"]
+# O COMANDO QUE VAI VENCER O ERRO:
+# 1. Deleta fisicamente os arquivos de cache e SESSÕES antigas (causadoras do erro de cifra)
+# 2. Gera as chaves novas no tamanho exato de 32 caracteres
+# 3. Limpa qualquer configuração travada
+ENTRYPOINT ["/bin/sh", "-c", "rm -rf bootstrap/cache/*.php storage/framework/sessions/* storage/framework/views/*.php && php artisan key:generate --force && php artisan jwt:secret --force && php artisan config:clear && php artisan cache:clear && php artisan migrate --force && apache2-foreground"]
