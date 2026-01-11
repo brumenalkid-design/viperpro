@@ -1,5 +1,6 @@
 FROM php:8.2-apache
 
+# Instalação bruta de dependências
 RUN apt-get update && apt-get install -y \
     libpq-dev libicu-dev libzip-dev zip unzip git \
     && docker-php-ext-install pdo_pgsql pgsql intl zip bcmath
@@ -8,14 +9,31 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
+# Composer sem piedade
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
 
+# Permissões no modo "Dono do Sistema"
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# RESET RADICAL: Apaga qualquer resquício físico de sessões e caches velhos
-ENTRYPOINT ["/bin/sh", "-c", "rm -rf bootstrap/cache/*.php storage/framework/sessions/* storage/framework/views/*.php storage/framework/cache/data/* && php artisan key:generate --force && php artisan jwt:secret --force && php artisan config:clear && php artisan cache:clear && php artisan migrate --force && apache2-foreground"]
+# --- OPERAÇÃO LIMPEZA TOTAL (ENTRYPOINT RADICAL) ---
+# 1. rm -rf em tudo que cheira a cache ou sessão velha
+# 2. Força o Laravel a rodar SEM arquivo de configuração prévia
+# 3. Gera chaves novas e limpa as rotas na marra
+ENTRYPOINT ["/bin/sh", "-c", " \
+    rm -rf bootstrap/cache/*.php && \
+    rm -rf storage/framework/cache/data/* && \
+    rm -rf storage/framework/views/*.php && \
+    rm -rf storage/framework/sessions/* && \
+    php artisan key:generate --force && \
+    php artisan jwt:secret --force && \
+    php artisan config:clear && \
+    php artisan cache:clear && \
+    php artisan view:clear && \
+    php artisan route:clear && \
+    php artisan migrate --force && \
+    apache2-foreground"]
