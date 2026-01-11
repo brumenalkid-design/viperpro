@@ -8,32 +8,35 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# 1. LIMPEZA TOTAL DE CACHE NO BUILD
-RUN rm -f .env && find bootstrap/cache -type f -not -name '.gitignore' -delete
+# 1. LIMPEZA TOTAL ANTES DE QUALQUER COISA
+# Deleta fisicamente QUALQUER cache que tenha vindo do Windows/GitHub
+RUN rm -rf bootstrap/cache/*.php && \
+    rm -rf storage/framework/sessions/* && \
+    rm -rf storage/framework/views/*.php && \
+    rm -f .env
 
 # 2. INSTALAÇÃO DO COMPOSER
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
 
-# 3. A INJEÇÃO LETAL (Substituindo o código que você me enviou)
-# Vamos trocar 'key' => env('APP_KEY') por uma chave real e fixa
-# E garantir que a 'cipher' seja exatamente AES-256-CBC
-RUN sed -i "s/'key' => env('APP_KEY'),/'key' => 'base64:OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ=',/g" config/app.php && \
-    sed -i "s/'cipher' => 'AES-256-CBC',/'cipher' => 'AES-256-CBC',/g" config/app.php
+# 3. A SOBREPOSIÇÃO FINAL (A chave agora é injetada via ENV do Sistema)
+# Isso garante que o PHP enxergue a chave independente do arquivo config/app.php
+ENV APP_KEY=base64:OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ=
+ENV APP_CIPHER=AES-256-CBC
 
-# 4. PERMISSÕES
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
+# 4. PERMISSÕES E CONFIGURAÇÃO APACHE
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
+    chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# 5. EXECUÇÃO SEM DESCULPAS
-# O 'config:cache' aqui vai ler a chave que injetamos acima
+# 5. ENTRYPOINT "RESET DE FÁBRICA"
+# Forçamos o 'config:clear' no início do boot para garantir que o cache do GitHub morra
 ENTRYPOINT ["/bin/sh", "-c", " \
-    php artisan config:cache && \
-    php artisan route:cache && \
-    php artisan view:cache && \
+    php artisan config:clear && \
+    php artisan cache:clear && \
+    php artisan key:generate --force && \
     php artisan jwt:secret --force && \
     php artisan migrate --force && \
     apache2-foreground"]
