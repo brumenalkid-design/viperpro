@@ -5,7 +5,7 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# PERMISSÕES ABSOLUTAS (Resolve Permission Denied)
+# PERMISSÕES (Garante que o log não trave o site)
 RUN mkdir -p storage/logs storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache
 RUN chmod -R 777 storage bootstrap/cache
 RUN chown -R www-data:www-data storage bootstrap/cache
@@ -16,14 +16,14 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT QUE SOBRESCREVE TUDO NO BOOT
+# SCRIPT DE BOOT: Gera tudo o que falta no Environment
 RUN echo '#!/bin/sh\n\
 php artisan config:clear\n\
-# GERA AS CHAVES NA MARRA (Resolve o erro do Segredo e Cifra)\n\
+# Força a criação das chaves (Isso resolve o erro de Segredo e Cifra)\n\
 php artisan key:generate --force\n\
 php artisan jwt:secret --force\n\
 \n\
-# LIMPA E IMPORTA O BANCO\n\
+# IMPORTAÇÃO DO BANCO (Usando o arquivo 1.6.1 que é o mais completo)\n\
 export PGPASSWORD=$DB_PASSWORD\n\
 psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"\n\
 psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -f /var/www/html/sql/viperpro.1.6.1.sql\n\
