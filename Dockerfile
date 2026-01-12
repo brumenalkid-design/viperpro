@@ -5,15 +5,8 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# LIMPEZA FÍSICA RADICAL (Elimina arquivos fantasmas de cache)
-RUN rm -rf bootstrap/cache/*.php
-RUN rm -rf storage/framework/cache/data/*
-RUN rm -rf storage/framework/views/*.php
-RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache
-
-# PERMISSÕES DE ROOT (Garante que o erro de log nunca mais volte)
-RUN chmod -R 777 storage bootstrap/cache
-RUN chown -R www-data:www-data /var/www/html
+# Permissões e limpeza de cache físico
+RUN rm -rf bootstrap/cache/*.php && mkdir -p bootstrap/cache && chmod -R 777 storage bootstrap/cache && chown -R www-data:www-data /var/www/html
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
@@ -21,15 +14,14 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT DE BOOT: SEM MISERICÓRDIA
+# Script de boot com tolerância a falhas no psql
 RUN echo '#!/bin/sh\n\
-# Force clear to be 100% sure\n\
 php artisan config:clear\n\
+php artisan cache:clear\n\
 \n\
-# DATABASE SYNC (Using your new gamedocker database)\n\
 export PGPASSWORD=$DB_PASSWORD\n\
-psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"\n\
-psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -f /var/www/html/sql/viperpro.1.6.1.sql\n\
+psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" || true\n\
+psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -f /var/www/html/sql/viperpro.1.6.1.sql || true\n\
 \n\
 apache2-foreground' > /usr/local/bin/deploy.sh
 
