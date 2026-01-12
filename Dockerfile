@@ -5,12 +5,14 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# Limpeza total de cache e logs antigos
-RUN rm -rf bootstrap/cache/*.php
-RUN find storage/framework -type f -delete
-RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache
-RUN chmod -R 777 storage bootstrap/cache
-RUN chown -R www-data:www-data /var/www/html
+# DELEÇÃO AGRESSIVA DE CACHE - Impede o erro de "Unsupported cipher"
+RUN rm -f bootstrap/cache/config.php \
+    && rm -f bootstrap/cache/services.php \
+    && rm -f bootstrap/cache/packages.php
+
+RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache \
+    && chmod -R 777 storage bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
@@ -18,5 +20,5 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# Inicia o Apache limpando qualquer lixo de config
-CMD ["sh", "-c", "php artisan config:clear && apache2-foreground"]
+# Comando que roda ao ligar o site: LIMPA TUDO DE NOVO
+CMD ["sh", "-c", "rm -f bootstrap/cache/*.php && php artisan config:clear && php artisan clear-compiled && apache2-foreground"]
