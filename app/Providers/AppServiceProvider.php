@@ -2,12 +2,11 @@
 
 namespace App\Providers;
 
-use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
-use Filament\Support\Assets\Js;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -16,7 +15,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // FORÇA A CHAVE E A CIFRA NO INÍCIO DE TUDO
+        Config::set('app.key', 'base64:OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ=');
+        Config::set('app.cipher', 'AES-256-CBC');
+        Config::set('jwt.secret', 'OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ=');
     }
 
     /**
@@ -24,12 +26,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-//        FilamentAsset::register([
-//            Js::make('filament-tools', base_path('vendor/sebastiaankloos/filament-code-editor/dist/filament-tools.js')),
-//        ]);
-
+        // Mantém a compatibilidade com o banco de dados
         Schema::defaultStringLength(191);
 
+        // Mantém a função de busca (WhereLike) que o seu sistema usa
         Builder::macro('whereLike', function ($attributes, string $searchTerm) {
             $this->where(function (Builder $query) use ($attributes, $searchTerm) {
                 foreach (Arr::wrap($attributes) as $attribute) {
@@ -53,3 +53,4 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 }
+
