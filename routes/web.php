@@ -7,28 +7,36 @@ use Illuminate\Support\Facades\DB;
 
 /*
 |--------------------------------------------------------------------------
-| INSTALADOR AUTOMÁTICO (TEMPORÁRIO)
+| INSTALADOR AUTOMÁTICO (TESTA OS DOIS ARQUIVOS)
 |--------------------------------------------------------------------------
 */
 Route::get('/', function () {
     try {
-        $sqlPath = base_path('sql/viperpro.1.6.1.sql');
-        
-        if (!file_exists($sqlPath)) {
-            return "Erro: O arquivo sql/viperpro.sql nao foi encontrado. Verifique se a pasta se chama 'sql' no seu GitHub.";
+        // Testa os dois nomes que aparecem na sua pasta SQL
+        $files = ['sql/viperpro.sql', 'sql/viperpro.1.6.1.sql'];
+        $foundFile = null;
+
+        foreach ($files as $file) {
+            if (file_exists(base_path($file))) {
+                $foundFile = $file;
+                break;
+            }
         }
 
-        $sql = file_get_contents($sqlPath);
+        if (!$foundFile) {
+            return "<h1>ERRO CRÍTICO</h1><p>Nenhum dos arquivos (.sql) foi encontrado na pasta /sql/. Verifique o nome da pasta no GitHub.</p>";
+        }
+
+        $sql = file_get_contents(base_path($foundFile));
         DB::unprepared($sql);
         
-        return "<h1>Banco de dados instalado com sucesso!</h1><p>Agora apague este bloco de instalador do arquivo web.php para liberar o acesso ao site.</p>";
+        return "<h1>SUCESSO TOTAL!</h1><p>Banco de dados instalado usando o arquivo: <b>$foundFile</b>. <br>Agora apague este bloco de instalador do web.php para o site abrir.</p>";
         
     } catch (\Exception $e) {
-        // Se der erro de "tabela ja existe", significa que ja instalou, entao podemos seguir.
         if (str_contains($e->getMessage(), 'already exists')) {
-            return "O banco de dados ja parece estar instalado. Tente acessar as outras rotas.";
+            return "<h1>O BANCO JÁ ESTÁ PRONTO</h1><p>As tabelas já existem. Remova este instalador do web.php para ver o site.</p>";
         }
-        return "Erro na instalacao: " . $e->getMessage();
+        return "<h1>ERRO NA INSTALAÇÃO</h1><pre>" . $e->getMessage() . "</pre>";
     }
 });
 
