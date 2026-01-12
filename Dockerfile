@@ -5,7 +5,7 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# 1. CRIAÇÃO E PERMISSÃO INICIAL (Resolve o erro de log e escrita)
+# 1. FORÇA BRUTA DE PERMISSÕES (Resolve de vez o erro Permission Denied)
 RUN mkdir -p storage/logs storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache
 RUN touch storage/logs/laravel.log
 RUN chmod -R 777 storage bootstrap/cache
@@ -17,22 +17,22 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# 2. SCRIPT DE DEPLOY (Configura o banco e chaves)
+# 2. SCRIPT DE DEPLOY COM CORREÇÃO DE JWT E BANCO
 RUN echo '#!/bin/sh\n\
 php artisan config:clear\n\
+php artisan cache:clear\n\
 export PGPASSWORD=$DB_PASSWORD\n\
-# Comando para injetar o banco viperpro.sql\n\
-psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -f /var/www/html/sql/viperpro.sql > /dev/null 2>&1\n\
-sed -i "s/'\''key'\'' => .*,/'\''key'\'' => '\''base64:OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ='\'' ,/g" config/app.php\n\
+# Injeção do banco via psql usando o arquivo confirmado no print 1000343527.png\n\
+psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -f /var/www/html/sql/viperpro.sql\n\
+# Resolve o erro de "Segredo não definido" do print 1000343556.png\n\
 php artisan key:generate --force\n\
 php artisan jwt:secret --force\n\
 php artisan config:cache\n\
 apache2-foreground' > /usr/local/bin/deploy-rocket.sh
 
-# 3. GARANTIA FINAL DE PERMISSÃO (Executa antes do servidor ligar)
+# 3. FINALIZAÇÃO DE ACESSOS
 RUN chmod +x /usr/local/bin/deploy-rocket.sh
 RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 ENTRYPOINT ["deploy-rocket.sh"]
 
