@@ -5,7 +5,8 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# FORCE PERMISSIONS
+# DELETE ANY EXISTING CACHE FILES BEFORE BOOT
+RUN rm -f bootstrap/cache/*.php
 RUN mkdir -p storage/logs storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache
 RUN chmod -R 777 storage bootstrap/cache
 RUN chown -R www-data:www-data storage bootstrap/cache
@@ -16,17 +17,17 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# BOOT SCRIPT WITH NO DEVIATIONS
+# BOOT SCRIPT - NO MERCY
 RUN echo '#!/bin/sh\n\
-php artisan config:clear\n\
-php artisan cache:clear\n\
+# CLEAN FILESYSTEM CACHE\n\
+rm -f bootstrap/cache/config.php\n\
+rm -f bootstrap/cache/services.php\n\
 \n\
-# DATABASE SYNC
+# DATABASE RECONSTRUCTION\n\
 export PGPASSWORD=$DB_PASSWORD\n\
 psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"\n\
 psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -f /var/www/html/sql/viperpro.1.6.1.sql\n\
 \n\
-# FINAL ENGINE START
 apache2-foreground' > /usr/local/bin/deploy.sh
 
 RUN chmod +x /usr/local/bin/deploy.sh
