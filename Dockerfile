@@ -5,7 +5,7 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# 1. PERMISSÕES TOTAIS (Confirmado funcionando nos logs)
+# PERMISSÕES TOTAIS
 RUN mkdir -p storage/logs storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache
 RUN touch storage/logs/laravel.log
 RUN chmod -R 777 storage bootstrap/cache
@@ -17,15 +17,17 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# 2. SCRIPT DE DEPLOY COM GERAÇÃO DE CHAVE DE 32 CARACTERES
+# SCRIPT DE DEPLOY RIGOROSO
 RUN echo '#!/bin/sh\n\
 php artisan config:clear\n\
+php artisan cache:clear\n\
+# FORÇA A CIFRA AES-256-CBC NO ARQUIVO DE CONFIGURAÇÃO\n\
+sed -i "s/'\''cipher'\'' => .*,/'\''cipher'\'' => '\''AES-256-CBC'\'',/g" config/app.php\n\
 export PGPASSWORD=$DB_PASSWORD\n\
-# Injeção do banco via psql\n\
 psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -p $DB_PORT -f /var/www/html/sql/viperpro.sql\n\
-# Resolve o erro de "Cifra não suportada" do print 1000343560\n\
-php artisan key:generate --force --no-interaction\n\
-php artisan jwt:secret --force --no-interaction\n\
+# GERA CHAVES NOVAS DO TAMANHO CORRETO\n\
+php artisan key:generate --force\n\
+php artisan jwt:secret --force\n\
 php artisan config:cache\n\
 apache2-foreground' > /usr/local/bin/deploy-rocket.sh
 
