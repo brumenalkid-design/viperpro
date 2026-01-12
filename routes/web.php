@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 */
 Route::get('/', function () {
     try {
-        $sqlPath = base_path('sql/viperpro.sql');
+        $sqlPath = base_path('sql/viperpro.1.6.1.sql');
         
         if (!file_exists($sqlPath)) {
             return "Erro: O arquivo sql/viperpro.sql nao foi encontrado. Verifique se a pasta se chama 'sql' no seu GitHub.";
