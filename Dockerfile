@@ -5,7 +5,7 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# Garante que as pastas de cache existam e estejam limpas antes do build
+# Garante permissões e limpa cache no build
 RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache \
     && rm -f bootstrap/cache/*.php \
     && chmod -R 777 storage bootstrap/cache \
@@ -13,24 +13,21 @@ RUN mkdir -p storage/framework/sessions storage/framework/views storage/framewor
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Instalação limpa das dependências
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs --no-scripts
 
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# O SEGREDO ATUALIZADO: O comando 'migrate:fresh' limpa o banco e reconstrói tudo do zero
+# SCRIPT PARA PLANO FREE: Limpa tudo e tenta migrar sem travar o Apache
 RUN echo '#!/bin/sh\n\
 rm -f /var/www/html/bootstrap/cache/config.php\n\
 php artisan config:clear\n\
 php artisan cache:clear\n\
-php artisan view:clear\n\
-# Limpa as tabelas problemáticas e cria a estrutura correta\n\
-php artisan migrate:fresh --force\n\
+# O "|| true" é vital no plano Free para o site não dar erro 500 se o banco demorar a acordar\n\
+php artisan migrate:fresh --force || true\n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
 RUN chmod +x /usr/local/bin/start-app.sh
 
 CMD ["/usr/local/bin/start-app.sh"]
-
 
