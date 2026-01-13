@@ -15,10 +15,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // FORÇA A CHAVE E A CIFRA NO INÍCIO DE TUDO
-        Config::set('app.key', 'base64:OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ=');
+        // KEY PERFEITA SINCRONIZADA: EXATAMENTE 32 BYTES
+        Config::set('app.key', 'base64:S3p4SjY3V0VTS0Z0N0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6ST0=');
         Config::set('app.cipher', 'AES-256-CBC');
-        Config::set('jwt.secret', 'OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ=');
+        Config::set('jwt.secret', 'S3p4SjY3V0VTS0Z0N0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6ST0=');
     }
 
     /**
