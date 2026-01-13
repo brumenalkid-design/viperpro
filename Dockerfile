@@ -12,7 +12,9 @@ RUN mkdir -p storage/framework/sessions storage/framework/views storage/framewor
     && chown -R www-data:www-data /var/www/html
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
+
+# AJUSTE CRÍTICO: Adicionado --no-scripts para evitar falha no build por falta de banco
+RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs --no-scripts
 
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
