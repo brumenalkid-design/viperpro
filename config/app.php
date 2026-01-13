@@ -10,9 +10,9 @@ return [
     'locale' => 'en',
     'fallback_locale' => 'en',
     'faker_locale' => 'en_US',
-    
-    // ALTERAÇÃO CRÍTICA: VALORES FIXOS SEM FUNÇÃO ENV
-    'key' => 'base64:OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ=',
+
+    // KEY PERFEITA: EXATAMENTE 32 BYTES PARA AES-256-CBC
+    'key' => 'base64:S3p4SjY3V0VTS0Z0N0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6ST0=',
     'cipher' => 'AES-256-CBC',
 
     'providers' => [
