@@ -38,4 +38,4 @@ php artisan migrate --force || echo "Migracao concluida ou com aviso"\n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
 RUN chmod +x /usr/local/bin/start-app.sh
-CMD ["/usr/local/bin/start-app.sh"]
+CMD ["/usr/local/bin/start-app.sh"] 
