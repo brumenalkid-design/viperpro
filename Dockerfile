@@ -5,7 +5,7 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# INJEÇÃO DA CHAVE MESTRA (Resolve o erro de Cipher e Key Length)
+# INJEÇÃO DA CHAVE MESTRA
 ENV APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=
 ENV APP_DEBUG=true
 ENV APP_ENV=production
@@ -23,20 +23,18 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT DE INICIALIZAÇÃO BLINDADO
+# SCRIPT DE INICIALIZAÇÃO DEFINITIVO
 RUN echo '#!/bin/sh\n\
-# Limpeza de caches antigos para evitar conflitos de configuração\n\
+# Força a limpeza de qualquer cache que esteja escondendo a chave nova\n\
 php artisan config:clear\n\
 php artisan cache:clear\n\
 php artisan view:clear\n\
-# Tenta rodar as migrações sem apagar tudo (mais leve para o plano Free)\n\
-# Se der erro na tabela game_exclusives, o site sobe mesmo assim para você ver a tela\n\
-php artisan migrate --force || echo "Aviso: Tabelas ja existem ou erro de migracao, ignorando..."\n\
+# RE-GERA O CACHE DE CONFIGURAÇÃO COM A CHAVE NOVA\n\
+php artisan config:cache\n\
+# Tenta rodar as migrações\n\
+php artisan migrate --force || echo "Aviso: Ignorando erro de migracao..."\n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
 RUN chmod +x /usr/local/bin/start-app.sh
 
 CMD ["/usr/local/bin/start-app.sh"]
-
-
-
