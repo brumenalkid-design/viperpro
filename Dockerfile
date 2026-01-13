@@ -5,12 +5,9 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# DELEÇÃO AGRESSIVA DE CACHE - Impede o erro de "Unsupported cipher"
-RUN rm -f bootstrap/cache/config.php \
-    && rm -f bootstrap/cache/services.php \
-    && rm -f bootstrap/cache/packages.php
-
+# Garante que as pastas de cache existam e estejam limpas antes do build
 RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache \
+    && rm -f bootstrap/cache/*.php \
     && chmod -R 777 storage bootstrap/cache \
     && chown -R www-data:www-data /var/www/html
 
@@ -20,5 +17,13 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# Comando que roda ao ligar o site: LIMPA TUDO DE NOVO
-CMD ["sh", "-c", "rm -f bootstrap/cache/*.php && php artisan config:clear && php artisan clear-compiled && apache2-foreground"]
+# O SEGREDO: Script que roda TODA VEZ que o container inicia
+RUN echo '#!/bin/sh\n\
+rm -f /var/www/html/bootstrap/cache/config.php\n\
+php artisan config:clear\n\
+php artisan cache:clear\n\
+apache2-foreground' > /usr/local/bin/start-app.sh
+
+RUN chmod +x /usr/local/bin/start-app.sh
+
+CMD ["/usr/local/bin/start-app.sh"]
