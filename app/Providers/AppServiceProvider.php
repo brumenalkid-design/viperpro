@@ -15,10 +15,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // KEY PERFEITA SINCRONIZADA: EXATAMENTE 32 BYTES
-        Config::set('app.key', 'base64:S3p4SjY3V0VTS0Z0N0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6ST0=');
+        // KEY MESTRA DEFINITIVA: 32 BYTES REAIS PARA AES-256-CBC
+        Config::set('app.key', 'base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=');
         Config::set('app.cipher', 'AES-256-CBC');
-        Config::set('jwt.secret', 'S3p4SjY3V0VTS0Z0N0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6S0Z6ST0=');
+        Config::set('jwt.secret', 'uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=');
     }
 
     /**
@@ -53,4 +53,3 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 }
-
