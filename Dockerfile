@@ -5,15 +5,14 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# DEFINIÇÃO DA CHAVE MESTRA
+# DEFINIÇÃO DA CHAVE DIRETAMENTE NO CONTAINER
 ENV APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=
 ENV APP_DEBUG=true
 ENV APP_ENV=production
 
-# LIMPEZA ATÔMICA: Removemos QUALQUER cache que você tenha enviado sem querer no GitHub
+# LIMPEZA TOTAL DE CACHE NO BUILD
 RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache \
     && rm -rf bootstrap/cache/*.php \
-    && rm -rf storage/framework/views/*.php \
     && chmod -R 777 storage bootstrap/cache \
     && chown -R www-data:www-data /var/www/html
 
@@ -23,20 +22,20 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT DE INICIALIZAÇÃO "FORCE"
+# SCRIPT DE BOOT: Força a criação do .env e limpa caches toda vez que o site sobe
 RUN echo '#!/bin/sh\n\
-# 1. Cria o .env físico\n\
+# Criando o .env na hora para matar o erro de Cipher\n\
 echo "APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=" > .env\n\
-echo "APP_CIPHER=AES-256-CBC" >> .env\n\
+echo "APP_ENV=production" >> .env\n\
+echo "APP_DEBUG=true" >> .env\n\
 \n\
-# 2. Limpa TUDO no boot\n\
+# Comandos de limpeza para o Plano Free\n\
 php artisan config:clear\n\
 php artisan cache:clear\n\
 php artisan view:clear\n\
-php artisan route:clear\n\
 \n\
-# 3. Migrações silenciosas\n\
-php artisan migrate --force || echo "Migracao ignorada"\n\
+# Migrações silenciosas (se falhar, o site sobe mesmo assim)\n\
+php artisan migrate --force || echo "Aviso: Migracao ignorada"\n\
 \n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
