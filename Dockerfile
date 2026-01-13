@@ -5,12 +5,12 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 COPY . .
 
-# DEFINIÇÃO DA CHAVE (ESTA É A CHAVE QUE MATA O ERRO DE CIPHER)
+# DEFINIÇÃO DA CHAVE MESTRA
 ENV APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=
 ENV APP_DEBUG=true
 ENV APP_ENV=production
 
-# LIMPEZA FÍSICA DE CACHE (IMPORTANTE APÓS RESET)
+# Garante permissões e limpa caches antigos
 RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data bootstrap/cache \
     && rm -rf bootstrap/cache/*.php \
     && chmod -R 777 storage bootstrap/cache \
@@ -22,13 +22,22 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT DE INICIALIZAÇÃO
+# SCRIPT DE INICIALIZAÇÃO "MATADOR"
 RUN echo '#!/bin/sh\n\
-# Limpa caches no boot\n\
+# CRIA UM ARQUIVO .ENV NA HORA COM A CHAVE CORRETA\n\
+echo "APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=" > .env\n\
+echo "APP_ENV=production" >> .env\n\
+echo "APP_DEBUG=true" >> .env\n\
+echo "APP_URL=${RENDER_EXTERNAL_URL}" >> .env\n\
+\n\
+# Limpa caches e força a leitura do novo .env\n\
 php artisan config:clear\n\
 php artisan cache:clear\n\
-# Tenta rodar as migrações (O reset pode exigir que o banco seja validado de novo)\n\
+php artisan view:clear\n\
+\n\
+# Tenta rodar as migrações\n\
 php artisan migrate --force || echo "Migracao ignorada"\n\
+\n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
 RUN chmod +x /usr/local/bin/start-app.sh
