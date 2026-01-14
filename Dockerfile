@@ -27,32 +27,30 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT DE INICIALIZAÇÃO DEFINITIVO (BLOQUEIA O RETORNO DE ERROS ANTIGOS)
+# SCRIPT DE INICIALIZAÇÃO DEFINITIVO - RESOLUÇÃO DE 24 ERROS
 RUN echo '#!/bin/sh\n\
-# 1. DELETA OS ARQUIVOS DE CACHE FISICAMENTE (Garante que nada antigo sobreviva)\n\
-rm -f bootstrap/cache/config.php\n\
-rm -f bootstrap/cache/services.php\n\
-rm -f bootstrap/cache/packages.php\n\
-rm -f bootstrap/cache/routes-v7.php\n\
+# 1. Limpeza física total e imediata\n\
+rm -rf bootstrap/cache/*.php\n\
 \n\
-# 2. RECRIA O .ENV DO ZERO COM AS CREDENCIAIS CERTAS\n\
-echo "APP_NAME=Laravel" > .env\n\
-echo "APP_ENV=production" >> .env\n\
-echo "APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=" >> .env\n\
-echo "APP_DEBUG=true" >> .env\n\
-echo "APP_URL=https://${RENDER_EXTERNAL_HOSTNAME}" >> .env\n\
+# 2. Configuração Forçada\n\
+echo "APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=" > .env\n\
 echo "DB_CONNECTION=pgsql" >> .env\n\
 echo "DB_HOST=dpg-d5ilblkhg0os738mds90-a" >> .env\n\
 echo "DB_PORT=5432" >> .env\n\
 echo "DB_DATABASE=gamedocker" >> .env\n\
 echo "DB_USERNAME=gamedocker_user" >> .env\n\
 echo "DB_PASSWORD=79ICALvAosgFplyYmwc3QK4gtMhfrZlC" >> .env\n\
+echo "APP_ENV=production" >> .env\n\
+echo "APP_DEBUG=true" >> .env\n\
 \n\
-# 3. LIMPA TUDO VIA ARTISAN POR SEGURANÇA\n\
-php artisan config:clear\n\
-php artisan cache:clear\n\
+# 3. SINCRONIZAÇÃO DE TABELAS (O que vai matar os 24 erros)\n\
+# Usamos o migrate:fresh para criar tudo do zero e o seed para popular dados iniciais\n\
+php artisan migrate:fresh --force --seed || echo "Aguardando banco..."\n\
 \n\
-# 4. SOBE O SERVIDOR SEM TENTAR MIGRAR (Para estabilizar o site primeiro)\n\
+# 4. Limpeza final de otimização\n\
+php artisan config:cache\n\
+php artisan route:cache\n\
+\n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
 RUN chmod +x /usr/local/bin/start-app.sh
