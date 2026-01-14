@@ -27,16 +27,21 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT DE INICIALIZAÇÃO (CORREÇÃO PONTUAL)
+# SCRIPT DE INICIALIZAÇÃO (AJUSTE DE CONEXÃO)
 RUN echo '#!/bin/sh\n\
-# Garante que o .env exista com a chave correta antes de qualquer comando\n\
+# Injeta TUDO no .env antes de começar\n\
 echo "APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=" > .env\n\
+echo "DB_CONNECTION=pgsql" >> .env\n\
+echo "DB_HOST=dpg-d5ilblkhg0os738mds90-a.oregon-postgres.render.com" >> .env\n\
+echo "DB_PORT=5432" >> .env\n\
+echo "DB_DATABASE=gamedocker" >> .env\n\
+echo "DB_USERNAME=gamedocker_user" >> .env\n\
+echo "DB_PASSWORD=79ICALvAosgFplyYmwc3QK4gtMhfrZlC" >> .env\n\
 \n\
-# Limpa o cache de configuração que trava o erro de Cipher\n\
 php artisan config:clear\n\
 \n\
-# Tenta as migrações (se houver erro de tabela, ele ignora e segue)\n\
-php artisan migrate --force || echo "Aviso: Tabelas já existem"\n\
+# Tenta rodar as migrações com os dados que acabamos de injetar\n\
+php artisan migrate --force || echo "Aviso: Conexao pendente ou tabelas ja existem"\n\
 \n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
