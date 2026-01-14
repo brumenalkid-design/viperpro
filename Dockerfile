@@ -10,7 +10,7 @@ ENV APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=
 ENV APP_DEBUG=true
 ENV APP_ENV=production
 ENV DB_CONNECTION=pgsql
-ENV DB_HOST=dpg-d5ilblkhg0os738mds90-a
+ENV DB_HOST=dpg-d5ilblkhg0os738mds90-a.oregon-postgres.render.com
 ENV DB_DATABASE=gamedocker
 ENV DB_USERNAME=gamedocker_user
 ENV DB_PASSWORD=79ICALvAosgFplyYmwc3QK4gtMhfrZlC
