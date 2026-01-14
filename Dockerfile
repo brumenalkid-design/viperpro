@@ -27,9 +27,13 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT DE INICIALIZAÇÃO DE ALTA PRECISÃO (VERSÃO FINAL CORRIGIDA)
+# SCRIPT DE INICIALIZAÇÃO (VERSÃO DE ALTA PRECISÃO - LIMPEZA FÍSICA)
 RUN echo '#!/bin/sh\n\
-# Injeção forçada de ambiente\n\
+# 1. LIMPEZA FÍSICA DE CACHE (DELETA OS ARQUIVOS DIRETAMENTE)\n\
+rm -rf bootstrap/cache/*.php\n\
+rm -rf storage/framework/views/*.php\n\
+\n\
+# 2. INJEÇÃO FORÇADA DE AMBIENTE\n\
 echo "APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=" > .env\n\
 echo "DB_CONNECTION=pgsql" >> .env\n\
 echo "DB_HOST=dpg-d5ilblkhg0os738mds90-a" >> .env\n\
@@ -40,11 +44,11 @@ echo "DB_PASSWORD=79ICALvAosgFplyYmwc3QK4gtMhfrZlC" >> .env\n\
 echo "APP_ENV=production" >> .env\n\
 echo "APP_DEBUG=true" >> .env\n\
 \n\
-# Limpeza de rastro de cache\n\
+# 3. COMANDOS ARTISAN PARA VALIDAR A LIMPEZA\n\
 php artisan config:clear\n\
 php artisan cache:clear\n\
 \n\
-# Tentativa de migração silenciosa\n\
+# 4. TENTATIVA DE MIGRAÇÃO SILENCIOSA\n\
 php artisan migrate --force || echo "Banco sincronizado ou aguardando conexão"\n\
 \n\
 apache2-foreground' > /usr/local/bin/start-app.sh
