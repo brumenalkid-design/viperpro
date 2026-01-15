@@ -1,15 +1,16 @@
 FROM php:8.2-apache
 
-# 1. Instalação de dependências
+# 1. Instalação limpa para evitar conflito de MPM
 RUN apt-get update && apt-get install -y \
     libpq-dev libicu-dev libzip-dev zip unzip git postgresql-client \
     && docker-php-ext-install pdo_pgsql pgsql intl zip bcmath
 
-# Habilita mod_rewrite
-RUN a2enmod rewrite
+# Desabilita o mpm_event e habilita o mpm_prefork (padrão do PHP)
+RUN a2dismod mpm_event && a2enmod mpm_prefork && a2enmod rewrite
 
 WORKDIR /var/www/html
 COPY . .
+# ... restante do código igual ao anterior ...
 
 # 2. Configurações de Ambiente
 ENV APP_ENV=production
