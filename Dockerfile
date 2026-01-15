@@ -48,7 +48,7 @@ php artisan route:cache\n\
 # 5. Finalização de Permissões\n\
 chown -R www-data:www-data storage bootstrap/cache\n\
 \n\
-echo "✅ DEPLOY FINALIZADO: Log limpo e sistema estável."\n\
+echo "DEPLOY FINALIZADO: Log limpo e sistema estável."\n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
 RUN chmod +x /usr/local/bin/start-app.sh
