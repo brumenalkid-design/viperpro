@@ -27,12 +27,12 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT DE INICIALIZAÇÃO DEFINITIVO - RESOLUÇÃO DE 24 ERROS
+# SCRIPT DE LIMPEZA TOTAL E POPULAÇÃO
 RUN echo '#!/bin/sh\n\
-# 1. Limpeza física total e imediata\n\
+# 1. Limpeza física de segurança\n\
 rm -rf bootstrap/cache/*.php\n\
 \n\
-# 2. Configuração Forçada\n\
+# 2. Configurações de Ambiente estáveis\n\
 echo "APP_KEY=base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=" > .env\n\
 echo "DB_CONNECTION=pgsql" >> .env\n\
 echo "DB_HOST=dpg-d5ilblkhg0os738mds90-a" >> .env\n\
@@ -41,15 +41,15 @@ echo "DB_DATABASE=gamedocker" >> .env\n\
 echo "DB_USERNAME=gamedocker_user" >> .env\n\
 echo "DB_PASSWORD=79ICALvAosgFplyYmwc3QK4gtMhfrZlC" >> .env\n\
 echo "APP_ENV=production" >> .env\n\
-echo "APP_DEBUG=true" >> .env\n\
+echo "APP_DEBUG=false" >> .env\n\
 \n\
-# 3. SINCRONIZAÇÃO DE TABELAS (O que vai matar os 24 erros)\n\
-# Usamos o migrate:fresh para criar tudo do zero e o seed para popular dados iniciais\n\
-php artisan migrate:fresh --force --seed || echo "Aguardando banco..."\n\
+# 3. MATA O ERRO "game_exclusives": Cria tabelas e insere os dados iniciais (Seed)\n\
+php artisan migrate:fresh --force --seed\n\
 \n\
-# 4. Limpeza final de otimização\n\
+# 4. Otimização final para o log ficar verde\n\
 php artisan config:cache\n\
 php artisan route:cache\n\
+php artisan view:cache\n\
 \n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
