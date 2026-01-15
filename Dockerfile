@@ -27,28 +27,28 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# SCRIPT DE SINCRONIZAÇÃO ATÔMICA (RESOLUÇÃO AMARELO/VERMELHO/VERDE)
+# SCRIPT DE SINCRONIZACAO ATOMICA (RESOLUCAO AMARELO/VERMELHO/VERDE)
 RUN echo '#!/bin/sh\n\
 # 1. Limpeza Radical de Cache e Ambiente\n\
 rm -rf bootstrap/cache/*.php\n\
 cp .env.example .env\n\
 \n\
-# 2. Reconstrução do mapa de classes (Mata o erro do Risco Amarelo)\n\
+# 2. Reconstrucao do mapa de classes\n\
 composer dump-autoload --optimize\n\
 \n\
-# 3. CONSTRUÇÃO DO BANCO EM SILÊNCIO\n\
-# O fresh garante a criação da "game_exclusives" antes das alterações\n\
-php artisan migrate:fresh --force --seed || echo "Aguardando conclusão..."\n\
+# 3. CONSTRUCAO DO BANCO EM SILENCIO\n\
+# O fresh garante a criacao da tabela game_exclusives antes das alteracoes\n\
+php artisan migrate:fresh --force --seed || echo "Aguardando conclusao..."\n\
 \n\
-# 4. GERAÇÃO DE CACHE (Só acontece após o banco estar OK)\n\
-# Isso evita que o erro do Risco Vermelho seja salvo na memória\n\
+# 4. GERACAO DE CACHE\n\
+# Isso evita que erros antigos fiquem salvos na memoria\n\
 php artisan config:cache\n\
 php artisan route:cache\n\
 \n\
-# 5. Finalização de Permissões\n\
+# 5. Finalizacao de Permissoes\n\
 chown -R www-data:www-data storage bootstrap/cache\n\
 \n\
-echo " DEPLOY FINALIZADO: Log limpo e sistema estável."\n\
+echo "DEPLOY FINALIZADO: Log limpo e sistema estavel."\n\
 apache2-foreground' > /usr/local/bin/start-app.sh
 
 RUN chmod +x /usr/local/bin/start-app.sh
