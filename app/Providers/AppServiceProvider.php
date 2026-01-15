@@ -15,10 +15,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // KEY MESTRA DEFINITIVA: 32 BYTES REAIS PARA AES-256-CBC
-        Config::set('app.key', 'base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=');
+        /**
+         * CONFIGURAÇÃO DINÂMICA: 
+         * O Laravel agora busca a APP_KEY do ambiente (Railway), 
+         * garantindo que a criptografia funcione em qualquer servidor.
+         */
+        Config::set('app.key', env('APP_KEY'));
         Config::set('app.cipher', 'AES-256-CBC');
-        Config::set('jwt.secret', 'uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=');
+        Config::set('jwt.secret', env('APP_KEY'));
     }
 
     /**
@@ -26,10 +30,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Mantém a compatibilidade com o banco de dados
+        // Mantém a compatibilidade de comprimento de strings para o MySQL/PostgreSQL
         Schema::defaultStringLength(191);
 
-        // Mantém a função de busca (WhereLike) que o seu sistema usa
+        /**
+         * MACRO WHERE LIKE:
+         * Mantém a funcionalidade de busca avançada em relacionamentos
+         * que o seu sistema utiliza.
+         */
         Builder::macro('whereLike', function ($attributes, string $searchTerm) {
             $this->where(function (Builder $query) use ($attributes, $searchTerm) {
                 foreach (Arr::wrap($attributes) as $attribute) {
@@ -53,3 +61,4 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 }
+
