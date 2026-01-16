@@ -1,23 +1,20 @@
 FROM php:8.2-fpm
 
-# 1. Instala Nginx e dependências do sistema
+# 1. Instala Nginx, dependências e o pacote gettext (para usar envsubst)
 RUN apt-get update && apt-get install -y \
-    nginx \
+    nginx gettext-base \
     libpq-dev libicu-dev libzip-dev zip unzip git postgresql-client libpng-dev libjpeg-dev libfreetype6-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql pgsql intl zip bcmath gd
 
-# 2. CONFIGURAÇÃO DE CONEXÃO INTERNA
-# Força o PHP-FPM a escutar na porta 9000 para o Nginx
+# 2. Configura o PHP-FPM
 RUN sed -i 's/listen = 127.0.0.1:9000/listen = 9000/g' /usr/local/etc/php-fpm.d/zz-docker.conf || true
 
-# 3. Configuração do Nginx (Escutando na porta dinâmica da Railway)
+# 3. Template do Nginx (usando $PORT como variável)
 RUN echo 'server {\n\
     listen ${PORT};\n\
     server_name _;\n\
     root /var/www/html/public;\n\
-    add_header X-Frame-Options "SAMEORIGIN";\n\
-    add_header X-Content-Type-Options "nosniff";\n\
     index index.php;\n\
     charset utf-8;\n\
     location / {\n\
@@ -28,45 +25,24 @@ RUN echo 'server {\n\
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;\n\
         include fastcgi_params;\n\
     }\n\
-    location ~ /\.(?!well-known).* {\n\
-        deny all;\n\
-    }\n\
-}' > /etc/nginx/sites-available/default
+}' > /etc/nginx/conf.d/default.conf.template
 
 WORKDIR /var/www/html
-
-# 4. Copia os arquivos do projeto
 COPY . .
 
-# 5. Instala o Composer e as dependências
+# 4. Composer e Permissões
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs --no-scripts
+RUN chown -R www-data:www-data /var/www/html && chmod -R 775 storage bootstrap/cache
 
-# 6. Ajusta permissões
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# 7. Script de Inicialização Placa de Ouro
-RUN echo '#!/bin/sh\n\
-# 1. Garante que a porta da Railway seja injetada na configuração do Nginx\n\
-# Usamos uma variável temporária para evitar erros de substituição\n\
-sed -i "s/\${PORT}/${PORT}/g" /etc/nginx/sites-available/default\n\
+# 5. Script de Inicialização Sênior
+RUN echo "#!/bin/sh\n\
+# Injeta a porta real no Nginx de forma limpa\n\
+envsubst '\${PORT}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/sites-available/default\n\
 \n\
-# 2. Inicia o PHP-FPM em segundo plano (daemon)\n\
 php-fpm -D\n\
-\n\
-# 3. Inicia o Nginx em primeiro plano para manter o container vivo\n\
-# O redirecionamento de logs ajuda a ver erros do Nginx no painel da Railway\n\
-nginx -g "daemon off;"' > /usr/local/bin/start-app.sh \
+nginx -g 'daemon off;'" > /usr/local/bin/start-app.sh \
     && chmod +x /usr/local/bin/start-app.sh
 
-# A porta padrão interna é 80, mas a Railway define a pública via $PORT
 EXPOSE 80
-
 CMD ["/usr/local/bin/start-app.sh"]
-
-# Informamos a porta 80 como padrão, mas o script acima cuida da dinâmica
-EXPOSE 80
-
-CMD ["/usr/local/bin/start-app.sh"]
-
