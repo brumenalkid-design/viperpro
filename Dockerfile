@@ -5,11 +5,8 @@ RUN apt-get update && apt-get install -y \
     libpq-dev libicu-dev libzip-dev zip unzip git postgresql-client \
     && docker-php-ext-install pdo_pgsql pgsql intl zip bcmath
 
-# 2. Ativa apenas o módulo de reescrita (SEM mexer em MPM)
-RUN a2enmod rewrite
-
-WORKDIR /var/www/html
-COPY . .
+# 2. Ativa o PHP (prefork) e desativa o conflito (event)
+RUN a2dismod mpm_event && a2enmod mpm_prefork && a2enmod rewrite
 
 # 3. Configura a pasta raiz para /public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
