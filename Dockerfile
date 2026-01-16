@@ -46,17 +46,23 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-pl
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 7. Script de Inicialização Robusto
+# 7. Script de Inicialização Robusto e Sênior
 RUN echo '#!/bin/sh\n\
-# Substitui a variável no arquivo de config do Nginx\n\
+# Injeta a porta real da Railway no arquivo de configuração do Nginx\n\
+sed -i "s/\${PORT}/${PORT}/g" /etc/apache2/ports.conf || true\n\
 sed -i "s/\${PORT}/${PORT}/g" /etc/nginx/sites-available/default\n\
 \n\
-# Inicia o PHP-FPM em segundo plano\n\
+# Inicia o PHP-FPM em background\n\
 php-fpm -D\n\
 \n\
-# Inicia o Nginx em primeiro plano para o container não fechar\n\
+# Inicia o Nginx em FOREGROUND (essencial para manter o container vivo)\n\
 nginx -g "daemon off;"' > /usr/local/bin/start-app.sh \
     && chmod +x /usr/local/bin/start-app.sh
+
+# A Railway usa a variável $PORT, o EXPOSE é apenas documental
+EXPOSE 80
+
+CMD ["/usr/local/bin/start-app.sh"]
 
 # Informamos a porta 80 como padrão, mas o script acima cuida da dinâmica
 EXPOSE 80
