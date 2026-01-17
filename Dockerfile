@@ -59,12 +59,11 @@ RUN printf 'server {\n\
 }\n' > /etc/nginx/conf.d/default.conf.template
 
 # ===============================
-# Startup (FINAL)
+# Startup FINAL (SIMPLES)
 # ===============================
 RUN printf '#!/bin/sh\n\
 set -e\n\
 \n\
-envsubst \"$PORT\" < /etc/nginx/conf.d/d \n\
 php artisan config:clear || true\n\
 php artisan cache:clear || true\n\
 php artisan route:clear || true\n\
