@@ -11,8 +11,7 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql intl zip bcmath gd \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /usr/share/nginx/html/*
+    && rm -rf /var/lib/apt/lists/*
 
 # ===============================
 # PHP-FPM config
@@ -20,7 +19,7 @@ RUN apt-get update && apt-get install -y \
 RUN sed -i 's|listen = .*|listen = 127.0.0.1:9000|' /usr/local/etc/php-fpm.d/zz-docker.conf
 
 # ===============================
-# Application
+# App
 # ===============================
 WORKDIR /var/www/html
 COPY . .
@@ -38,13 +37,13 @@ RUN chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache
 
 # ===============================
-# Remove default nginx configs
+# Nginx config (CORRETO)
 # ===============================
-RUN rm -f /etc/nginx/conf.d/default.conf
 
-# ===============================
-# Nginx config (Railway-compatible)
-# ===============================
+# Remove QUALQUER config default do nginx (evita conflito)
+RUN rm -f /etc/nginx/conf.d/*.conf
+
+# Cria a única config válida do site
 RUN printf 'server {\n\
     listen 80;\n\
     server_name _;\n\
@@ -75,10 +74,7 @@ php artisan route:clear || true\n\
 php artisan view:clear || true\n\
 \n\
 php-fpm -D\n\
-exec nginx -g '\''daemon off;'\''\n' > /start.sh \
+exec nginx -g \"daemon off;\"\n' > /start.sh \
  && chmod +x /start.sh
 
-# ===============================
-# Start container
-# ===============================
-CMD ["/start.sh"]
+CMD [\"/start.sh\"]
