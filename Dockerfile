@@ -14,14 +14,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # ===============================
-# Remove TODA config default do nginx
-# ===============================
-RUN rm -rf /etc/nginx/conf.d/* \
-    && rm -rf /etc/nginx/sites-enabled/* \
-    && rm -rf /etc/nginx/sites-available/*
-
-# ===============================
-# Config PHP-FPM
+# PHP-FPM
 # ===============================
 RUN sed -i 's|listen = .*|listen = 127.0.0.1:9000|' /usr/local/etc/php-fpm.d/zz-docker.conf
 
@@ -37,34 +30,47 @@ COPY . .
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# ===============================
-# Permissões
-# ===============================
 RUN chown -R www-data:www-data storage bootstrap/cache
 
 # ===============================
-# NGINX LARAVEL (PORTA FIXA)
+# SUBSTITUI nginx.conf (AQUI ESTÁ A CHAVE)
 # ===============================
-RUN printf 'server {\n\
-    listen 8080;\n\
-    server_name _;\n\
-    root /var/www/html/public;\n\
-    index index.php;\n\
+RUN printf 'user www-data;\n\
+worker_processes auto;\n\
+error_log /var/log/nginx/error.log warn;\n\
+pid /var/run/nginx.pid;\n\
 \n\
-    location / {\n\
-        try_files $uri $uri/ /index.php?$query_string;\n\
-    }\n\
+events {\n\
+    worker_connections 1024;\n\
+}\n\
 \n\
-    location ~ \\.php$ {\n\
-        fastcgi_pass 127.0.0.1:9000;\n\
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
-        include fastcgi_params;\n\
+http {\n\
+    include /etc/nginx/mime.types;\n\
+    default_type application/octet-stream;\n\
+\n\
+    sendfile on;\n\
+    keepalive_timeout 65;\n\
+\n\
+    server {\n\
+        listen 8080;\n\
+        server_name _;\n\
+        root /var/www/html/public;\n\
+        index index.php;\n\
+\n\
+        location / {\n\
+            try_files $uri $uri/ /index.php?$query_string;\n\
+        }\n\
+\n\
+        location ~ \\.php$ {\n\
+            fastcgi_pass 127.0.0.1:9000;\n\
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
+            include fastcgi_params;\n\
+        }\n\
     }\n\
-}\n' > /etc/nginx/conf.d/app.conf
+}\n' > /etc/nginx/nginx.conf
 
 # ===============================
 # Start
 # ===============================
 CMD php-fpm -D && nginx -g "daemon off;"
-
 
