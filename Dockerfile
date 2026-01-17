@@ -39,13 +39,13 @@ RUN chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache
 
 # ===============================
-# NGINX TEMPLATE (Railway PORT)
+# NGINX TEMPLATE (CORRETO)
 # ===============================
 RUN printf 'server {\n\
     listen ${PORT};\n\
     server_name _;\n\
     root /var/www/html/public;\n\
-    index index.php index.html;\n\
+    index index.php;\n\
 \n\
     location / {\n\
         try_files $uri $uri/ /index.php?$query_string;\n\
@@ -64,14 +64,16 @@ RUN printf 'server {\n\
 RUN printf '#!/bin/sh\n\
 set -e\n\
 \n\
-envsubst "$PORT" < /etc/nginx/conf.d/def \n\
+envsubst \"$PORT\" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n\
+\n\
 php artisan config:clear || true\n\
 php artisan cache:clear || true\n\
 php artisan route:clear || true\n\
 php artisan view:clear || true\n\
 \n\
 php-fpm -D\n\
-nginx -g daemon\\ off;\n' > /start.sh \
+nginx -g \"daemon off;\"\n' > /start.sh \
  && chmod +x /start.sh
 
 CMD ["sh", "/start.sh"]
+
