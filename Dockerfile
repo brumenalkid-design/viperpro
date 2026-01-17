@@ -1,19 +1,18 @@
 FROM php:8.2-fpm
 
 # ===============================
-# Dependências do sistema
+# System deps
 # ===============================
 RUN apt-get update && apt-get install -y \
     nginx \
     libpq-dev libicu-dev libzip-dev \
     zip unzip git \
     libpng-dev libjpeg-dev libfreetype6-dev \
-    gettext-base \
-    && rm -rf /usr/share/nginx/html/* \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql intl zip bcmath gd \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /usr/share/nginx/html/*
 
 # ===============================
 # PHP-FPM
@@ -21,7 +20,7 @@ RUN apt-get update && apt-get install -y \
 RUN sed -i 's|listen = .*|listen = 127.0.0.1:9000|' /usr/local/etc/php-fpm.d/zz-docker.conf
 
 # ===============================
-# Aplicação
+# App
 # ===============================
 WORKDIR /var/www/html
 COPY . .
@@ -33,22 +32,16 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # ===============================
-# Permissões Laravel
+# Permissions
 # ===============================
 RUN chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache
 
 # ===============================
-# NGINX — remove default
-# ===============================
-RUN rm -f /etc/nginx/sites-enabled/default \
- && rm -f /etc/nginx/sites-available/default
-
-# ===============================
-# NGINX SITE (Railway PORT)
+# NGINX CONFIG (single file)
 # ===============================
 RUN printf 'server {\n\
-    listen ${PORT};\n\
+    listen 8080;\n\
     server_name _;\n\
     root /var/www/html/public;\n\
     index index.php;\n\
@@ -62,20 +55,15 @@ RUN printf 'server {\n\
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
         fastcgi_pass 127.0.0.1:9000;\n\
     }\n\
-}\n' > /etc/nginx/sites-available/laravel.conf
+}\n' > /etc/nginx/conf.d/default.conf
 
 # ===============================
-# Enable site
-# ===============================
-RUN ln -s /etc/nginx/sites-available/laravel.conf /etc/nginx/sites-enabled/laravel.conf
-
-# ===============================
-# Start script
+# Startup
 # ===============================
 RUN printf '#!/bin/sh\n\
 set -e\n\
 \n\
-envsubst "\\$PORT" < /etc/nginx/sites-available/laravel.conf > /etc/nginx/sites-enabled/laravel.conf\n\
+sed -i \"s/listen 8080;/listen ${PORT};/\" /etc/nginx/conf.d/default.conf\n\
 \n\
 php artisan config:clear || true\n\
 php artisan cache:clear || true\n\
@@ -83,7 +71,7 @@ php artisan route:clear || true\n\
 php artisan view:clear || true\n\
 \n\
 php-fpm -D\n\
-nginx -g "daemon off;"\n' > /start.sh \
+nginx -g \"daemon off;\"\n' > /start.sh \
  && chmod +x /start.sh
 
-CMD ["/start.sh"]
+CMD [\"/start.sh\"]
