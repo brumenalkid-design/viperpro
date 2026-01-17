@@ -73,9 +73,6 @@ php artisan cache:clear || true\n\
 php artisan route:clear || true\n\
 php artisan view:clear || true\n\
 \n\
-# start PHP-FPM then nginx\n\
-php-fpm -D\n\
-nginx\n' > /start.sh \
- && chmod +x /start.sh
-
-CMD ["sh", "/start.sh"]
+# start PHP-FPM then nginx
+php-fpm -D
+nginx -g "daemon off;"
