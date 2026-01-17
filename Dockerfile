@@ -64,15 +64,14 @@ RUN printf 'server {\n\
 RUN printf '#!/bin/sh\n\
 set -e\n\
 \n\
-envsubst \"\\$PORT\" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n\
-\n\
+envsubst "$PORT" < /etc/nginx/conf.d/def \n\
 php artisan config:clear || true\n\
 php artisan cache:clear || true\n\
 php artisan route:clear || true\n\
 php artisan view:clear || true\n\
 \n\
 php-fpm -D\n\
-nginx -g \"daemon off;\"\n' > /start.sh \
+nginx -g daemon\\ off;\n' > /start.sh \
  && chmod +x /start.sh
 
 CMD ["sh", "/start.sh"]
