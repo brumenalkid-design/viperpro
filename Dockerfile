@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
-    && docker-php-ext-configure gd --wit
-    && docker-php-ext-install pdo_pgsql
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_pgsql intl zip bcmath gd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /usr/share/nginx/html/*
@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
 # ===============================
 # PHP-FPM config
 # ===============================
-RUN sed -i 's|listen = .*|listen = 127.0
+RUN sed -i 's|listen = .*|listen = 127.0.0.1:9000|' /usr/local/etc/php-fpm.d/zz-docker.conf
 
 # ===============================
 # Application
@@ -32,13 +32,13 @@ COPY . .
 # ===============================
 # Composer
 # ===============================
-COPY --from=composer:2 /usr/bin/composer
-RUN composer install --no-dev --optimize
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # ===============================
 # Laravel permissions
 # ===============================
-RUN chown -R www-data:www-data storage b
+RUN chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache
 
 # ===============================
@@ -56,7 +56,7 @@ RUN printf 'server {\n\
 \n\
     location ~ \\.php$ {\n\
         include fastcgi_params;\n\
-        fastcgi_param SCRIPT_FILENAME $d
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
         fastcgi_pass 127.0.0.1:9000;\n\
     }\n\
 }\n' > /etc/nginx/conf.d/default.conf
