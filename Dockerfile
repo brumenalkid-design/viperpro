@@ -1,13 +1,14 @@
 FROM php:8.2-fpm
 
 # ===============================
-# Dependências
+# Dependências do sistema
 # ===============================
 RUN apt-get update && apt-get install -y \
     nginx \
     libpq-dev libicu-dev libzip-dev \
     zip unzip git \
     libpng-dev libjpeg-dev libfreetype6-dev \
+    gettext-base \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql intl zip bcmath gd \
     && apt-get clean \
@@ -19,7 +20,7 @@ RUN apt-get update && apt-get install -y \
 RUN sed -i 's|listen = .*|listen = 127.0.0.1:9000|' /usr/local/etc/php-fpm.d/zz-docker.conf
 
 # ===============================
-# App
+# Aplicação
 # ===============================
 WORKDIR /var/www/html
 COPY . .
@@ -30,47 +31,52 @@ COPY . .
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-RUN chown -R www-data:www-data storage bootstrap/cache
+# ===============================
+# Permissões Laravel (CRÍTICO)
+# ===============================
+RUN chown -R www-data:www-data storage bootstrap/cache \
+ && chmod -R 775 storage bootstrap/cache
 
 # ===============================
-# SUBSTITUI nginx.conf (AQUI ESTÁ A CHAVE)
+# NGINX (remove default)
 # ===============================
-RUN printf 'user www-data;\n\
-worker_processes auto;\n\
-error_log /var/log/nginx/error.log warn;\n\
-pid /var/run/nginx.pid;\n\
+RUN rm -f /etc/nginx/sites-enabled/default
+
+# ===============================
+# Template Nginx (Railway PORT)
+# ===============================
+RUN printf 'server {\n\
+    listen ${PORT};\n\
+    server_name _;\n\
+    root /var/www/html/public;\n\
+    index index.php index.html;\n\
 \n\
-events {\n\
-    worker_connections 1024;\n\
-}\n\
-\n\
-http {\n\
-    include /etc/nginx/mime.types;\n\
-    default_type application/octet-stream;\n\
-\n\
-    sendfile on;\n\
-    keepalive_timeout 65;\n\
-\n\
-    server {\n\
-        listen 8080;\n\
-        server_name _;\n\
-        root /var/www/html/public;\n\
-        index index.php;\n\
-\n\
-        location / {\n\
-            try_files $uri $uri/ /index.php?$query_string;\n\
-        }\n\
-\n\
-        location ~ \\.php$ {\n\
-            fastcgi_pass 127.0.0.1:9000;\n\
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
-            include fastcgi_params;\n\
-        }\n\
+    location / {\n\
+        try_files $uri $uri/ /index.php?$query_string;\n\
     }\n\
-}\n' > /etc/nginx/nginx.conf
+\n\
+    location ~ \\.php$ {\n\
+        include fastcgi.conf;\n\
+        fastcgi_pass 127.0.0.1:9000;\n\
+    }\n\
+}\n' > /etc/nginx/conf.d/default.conf.template
 
 # ===============================
-# Start
+# Start script
 # ===============================
-CMD php-fpm -D && nginx -g "daemon off;"
+RUN printf '#!/bin/sh\n\
+set -e\n\
+\n\
+envsubst "\\$PORT" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n\
+\n\
+php artisan config:clear || true\n\
+php artisan cache:clear || true\n\
+php artisan route:clear || true\n\
+php artisan view:clear || true\n\
+\n\
+php-fpm -D\n\
+nginx -g "daemon off;"\n' > /start.sh \
+ && chmod +x /start.sh
+
+CMD ["/start.sh"]
 
