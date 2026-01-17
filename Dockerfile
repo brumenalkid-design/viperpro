@@ -57,7 +57,7 @@ RUN printf 'server {\n\
 }\n' > /etc/nginx/conf.d/default.conf.template
 
 # ===============================
-# Script de inicialização (CORRETO)
+# Script de inicialização (FIX)
 # ===============================
 RUN printf '#!/bin/sh\n\
 set -e\n\
@@ -67,7 +67,7 @@ echo \"PORT=$PORT\"\n\
 envsubst '\''$PORT'\'' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n\
 \n\
 php-fpm -D\n\
-nginx -g \"daemon off;\"\n' > /start.sh \
+nginx -g '\''daemon off;'\''\n' > /start.sh \
  && chmod +x /start.sh
 
 # ===============================
