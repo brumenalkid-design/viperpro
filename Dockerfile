@@ -1,32 +1,32 @@
 FROM php:8.2-fpm
 
 # ===============================
-# Dependências do sistema
+# Dependências
 # ===============================
 RUN apt-get update && apt-get install -y \
     nginx \
     libpq-dev libicu-dev libzip-dev \
     zip unzip git \
     libpng-dev libjpeg-dev libfreetype6-dev \
-    gettext-base \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql intl zip bcmath gd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # ===============================
-# Remove site default do nginx
+# Remove TODA config default do nginx
 # ===============================
-RUN rm -f /etc/nginx/sites-enabled/default \
-    && rm -f /etc/nginx/sites-available/default
+RUN rm -rf /etc/nginx/conf.d/* \
+    && rm -rf /etc/nginx/sites-enabled/* \
+    && rm -rf /etc/nginx/sites-available/*
 
 # ===============================
-# Configuração PHP-FPM
+# Config PHP-FPM
 # ===============================
 RUN sed -i 's|listen = .*|listen = 127.0.0.1:9000|' /usr/local/etc/php-fpm.d/zz-docker.conf
 
 # ===============================
-# Aplicação
+# App
 # ===============================
 WORKDIR /var/www/html
 COPY . .
@@ -38,15 +38,15 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # ===============================
-# Permissões Laravel
+# Permissões
 # ===============================
 RUN chown -R www-data:www-data storage bootstrap/cache
 
 # ===============================
-# Configuração Nginx Laravel
+# NGINX LARAVEL (PORTA FIXA)
 # ===============================
 RUN printf 'server {\n\
-    listen ${PORT};\n\
+    listen 8080;\n\
     server_name _;\n\
     root /var/www/html/public;\n\
     index index.php;\n\
@@ -60,18 +60,11 @@ RUN printf 'server {\n\
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
         include fastcgi_params;\n\
     }\n\
-}\n' > /etc/nginx/conf.d/default.conf.template
+}\n' > /etc/nginx/conf.d/app.conf
 
 # ===============================
-# Script de start
+# Start
 # ===============================
-RUN printf '#!/bin/sh\n\
-set -e\n\
-envsubst "\\$PORT" < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf\n\
-php-fpm -D\n\
-nginx -g "daemon off;"\n' > /start.sh \
- && chmod +x /start.sh
-
-CMD ["/start.sh"]
+CMD php-fpm -D && nginx -g "daemon off;"
 
 
