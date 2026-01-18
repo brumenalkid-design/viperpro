@@ -37,28 +37,35 @@ RUN chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache
 
 # ===============================
-# Nginx config (ÚNICA)
+# Nginx config (ÚNICA, LIMPA)
 # ===============================
-RUN rm -f /etc/nginx/conf.d/*.conf
+RUN rm -f /etc/nginx/conf.d/*
 
-RUN printf 'server {\n\
-    listen 80;\n\
-    server_name _;\n\
-    root /var/www/html/public;\n\
-    index index.php index.html;\n\
-\n\
-    location / {\n\
-        try_files $uri $uri/ /index.php?$query_string;\n\
-    }\n\
-\n\
-    location ~ \\.php$ {\n\
-        include fastcgi_params;\n\
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
-        fastcgi_pass 127.0.0.1:9000;\n\
-    }\n\
-}\n' > /etc/nginx/conf.d/default.conf
+RUN echo 'server {
+    listen 80 default_server;
+    server_name _;
+
+    root /var/www/html/public;
+    index index.php index.html;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+}' > /etc/nginx/conf.d/default.conf
 
 # ===============================
-# START (SEM SCRIPT)
+# Laravel ENV safety
 # ===============================
-CMD ["sh", "-c", "php-fpm -F & nginx -g 'daemon off;'"]
+ENV APP_ENV=production
+ENV LOG_CHANNEL=stderr
+
+# ===============================
+# Start services (FINAL)
+# ===============================
+CMD ["sh", "-c", "php artisan config:clear || true && php-fpm -F & nginx -g 'daemon off;'"]
