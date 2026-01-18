@@ -31,30 +31,19 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # ===============================
-# 🔎 TESTE 1 — autoload do Laravel
-# ===============================
-RUN php -r "require 'vendor/autoload.php'; echo 'autoload OK\n';"
-
-# ===============================
 # Laravel permissions
 # ===============================
 RUN chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache
 
 # ===============================
-# 🔎 TESTE 2 — storage e logs
+# Nginx config (ÚNICA)
 # ===============================
-RUN ls -la storage && ls -la storage/logs || true
-
-# ===============================
-# Nginx config (ÚNICA e limpa)
-# ===============================
-RUN rm -f /etc/nginx/conf.d/*
+RUN rm -f /etc/nginx/conf.d/*.conf
 
 RUN printf 'server {\n\
     listen 80;\n\
     server_name _;\n\
-\n\
     root /var/www/html/public;\n\
     index index.php index.html;\n\
 \n\
@@ -70,18 +59,6 @@ RUN printf 'server {\n\
 }\n' > /etc/nginx/conf.d/default.conf
 
 # ===============================
-# Startup script (CORRETO e simples)
+# START (SEM SCRIPT)
 # ===============================
-RUN printf '#!/bin/sh\n\
-set -e\n\
-\n\
-php artisan config:clear || true\n\
-php artisan cache:clear || true\n\
-php artisan route:clear || true\n\
-php artisan view:clear || true\n\
-\n\
-php-fpm -D\n\
-exec nginx -g \"daemon off;\"\n' > /start.sh \
- && chmod +x /start.sh
-
-CMD ["sh", "/start.sh"]
+CMD ["sh", "-c", "php-fpm -F & nginx -g 'daemon off;'"]
