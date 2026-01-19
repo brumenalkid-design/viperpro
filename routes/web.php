@@ -3,13 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Config;
 
-Route::get('/', function () {
-    return "<h1>SYSTEM ONLINE</h1><p>The core application is now operational.</p>";
-});
+// O bloco "SYSTEM ONLINE" foi removido daqui para permitir o carregamento das rotas reais.
 
 // CARREGA AS ROTAS DO SISTEMA
 if (file_exists(__DIR__ . '/groups/layouts/app.php')) {
     include_once(__DIR__ . '/groups/layouts/app.php');
 }
-
-
