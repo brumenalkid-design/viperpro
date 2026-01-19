@@ -16,15 +16,18 @@ COPY --from=build-assets /app/public/build ./public/build
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-RUN touch .env && chown www-data:www-data .env && chmod 664 .env
+# CRIANDO O .ENV COM O CAMPO APP_KEY JÁ PRONTO
+RUN echo "APP_KEY=" > .env
+RUN chown www-data:www-data .env && chmod 664 .env
 RUN chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache
 RUN rm -rf /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*
 
 RUN echo 'server { listen 80; root /var/www/html/public; index index.php; location / { try_files $uri $uri/ /index.php?$query_string; } location ~ \.php$ { include fastcgi_params; fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; fastcgi_pass 127.0.0.1:9000; } }' > /etc/nginx/conf.d/default.conf
 
-# Criando o script de inicialização de forma mais segura
+# Script de inicialização
 RUN echo '#!/bin/sh' > /usr/local/bin/start.sh
 RUN echo 'sed -i "s/listen 80;/listen ${PORT:-8080};/g" /etc/nginx/conf.d/default.conf' >> /usr/local/bin/start.sh
+# Agora o key:generate vai encontrar o campo APP_KEY= e preenchê-lo
 RUN echo 'php artisan key:generate --force' >> /usr/local/bin/start.sh
 RUN echo 'php artisan config:clear' >> /usr/local/bin/start.sh
 RUN echo 'php artisan migrate --force > /dev/null 2>&1 || echo "Banco sincronizado."' >> /usr/local/bin/start.sh
