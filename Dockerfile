@@ -16,24 +16,25 @@ COPY --from=build-assets /app/public/build ./public/build
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Remove caches que podem ter vindo no commit do GitHub
-RUN rm -rf bootstrap/cache/*.php storage/framework/cache/data/*
-
+# Garante que o diretório de cache e o arquivo .env existam com permissões corretas
+RUN touch .env && chown www-data:www-data .env && chmod 664 .env
 RUN chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache
 RUN rm -rf /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*
 
 RUN echo 'server { listen 80; root /var/www/html/public; index index.php; location / { try_files $uri $uri/ /index.php?$query_string; } location ~ \.php$ { include fastcgi_params; fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; fastcgi_pass 127.0.0.1:9000; } }' > /etc/nginx/conf.d/default.conf
 
-# Script de inicialização Sênior: Limpa, Gera e Inicia
+# Script de inicialização: Cria .env, Gera Chave e Inicia
 RUN printf "#!/bin/sh\n\
 sed -i \"s/listen 80;/listen \${PORT:-8080};/g\" /etc/nginx/conf.d/default.conf\n\
-# 1. Limpeza de segurança para garantir leitura da nova chave\n\
-php artisan config:clear\n\
-# 2. Gera a chave e captura para o ambiente atual\n\
+# 1. Cria um .env básico se não existir para o key:generate não falhar\n\
+[ ! -f .env ]: # "&& touch .env\n\"
+# 2. Gera a chave (agora ele terá o arquivo .env para escrever)\n\
 php artisan key:generate --force\n\
-# 3. Migrations silenciosas (evita poluição visual nos logs)\n\
+# 3. Limpa caches para garantir que a nova chave seja lida\n\
+php artisan config:clear\n\
+# 4. Migrations silenciosas\n\
 php artisan migrate --force > /dev/null 2>&1 || echo \"Banco de dados sincronizado.\"\n\
-# 4. Inicia serviços\n\
+# 5. Inicia serviços\n\
 php-fpm -D\n\
 nginx -g \"daemon off;\"\n" > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
 
