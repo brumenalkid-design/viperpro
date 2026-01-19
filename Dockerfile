@@ -1,93 +1,33 @@
-# ===============================
-# ESTÁGIO 1: Build dos Assets (Node.js)
-# ===============================
 FROM node:18-alpine AS build-assets
 WORKDIR /app
 COPY . .
 RUN npm install && npm run build
 
-# ===============================
-# ESTÁGIO 2: Aplicação (PHP + Nginx)
-# ===============================
 FROM php:8.2-fpm
-
-# Dependências do Sistema
-RUN apt-get update && apt-get install -y \
-    nginx \
-    libpq-dev libicu-dev libzip-dev \
-    zip unzip git \
-    libpng-dev libjpeg-dev libfreetype6-dev \
+RUN apt-get update && apt-get install -y nginx libpq-dev libicu-dev libzip-dev zip unzip git libpng-dev libjpeg-dev libfreetype6-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql intl zip bcmath gd \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Configuração do PHP-FPM
 RUN sed -i 's|listen = .*|listen = 127.0.0.1:9000|' /usr/local/etc/php-fpm.d/zz-docker.conf
-
-# Diretório da Aplicação
 WORKDIR /var/www/html
 COPY . .
-
-# Copiamos os assets compilados
 COPY --from=build-assets /app/public/build ./public/build
-
-# Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache
+RUN rm -rf /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*
 
-# Permissões
-RUN chown -R www-data:www-data storage bootstrap/cache \
- && chmod -R 775 storage bootstrap/cache
+RUN printf "server {\n listen 80;\n root /var/www/html/public;\n index index.php;\n location / {\n try_files \$uri \$uri/ /index.php?\$query_string;\n }\n location ~ \.php$ {\n include fastcgi_params;\n fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;\n fastcgi_pass 127.0.0.1:9000;\n }\n}\n" > /etc/nginx/conf.d/default.conf
 
-# NGINX — Limpeza Total
-RUN rm -rf /etc/nginx/sites-enabled/* /etc/nginx/sites-available/* /etc/nginx/conf.d/*
-
-# Configuração do Nginx
-RUN printf "server {\n\
-    listen 80;\n\
-    listen [::]:80;\n\
-    root /var/www/html/public;\n\
-    index index.php index.html;\n\
-    server_name _;\n\
-\n\
-    location / {\n\
-        try_files \$uri \$uri/ /index.php?\$query_string;\n\
-    }\n\
-\n\
-    location ~ \.php$ {\n\
-        include fastcgi_params;\n\
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;\n\
-        fastcgi_pass 127.0.0.1:9000;\n\
-    }\n\
-}\n" > /etc/nginx/conf.d/default.conf
-
-# Script de Inicialização (Entrypoint)
 RUN echo '#!/bin/sh\n\
-# 1. Ajusta a porta\n\
-REAL_PORT=${PORT:-8080}\n\
-sed -i "s/listen 80;/listen $REAL_PORT;/g" /etc/nginx/conf.d/default.conf\n\
-sed -i "s/listen \[::\]:80;/listen [::]:$REAL_PORT;/g" /etc/nginx/conf.d/default.conf\n\
-\n\
-# 2. Limpeza FORÇADA de cache antes de qualquer coisa\n\
-rm -f storage/framework/cache/data/*\n\
+sed -i "s/listen 80;/listen ${PORT:-8080};/g" /etc/nginx/conf.d/default.conf\n\
+# LIMPEZA CRÍTICA\n\
 rm -f bootstrap/cache/*.php\n\
-\n\
-# 3. Garante uma APP_KEY válida\n\
-# Se não houver APP_KEY nas variáveis da Railway, geramos uma nova\n\
-if [ -z "$APP_KEY" ]; then\n\
-    php artisan key:generate --force\n\
-else\n\
-    # Se houver, forçamos o Laravel a reconhecê-la limpando o config\n\
-    php artisan config:clear\n\
-fi\n\
-\n\
-# 4. Migrations (Ignora erro se a coluna já existir)\n\
-php artisan migrate --force || echo "Aviso: Migrations com colunas duplicadas, ignorando..."\n\
-\n\
-# 5. Inicia serviços\n\
-php-fpm -D\n\
-nginx -g "daemon off;"' > /usr/local/bin/start-app.sh && chmod +x /usr/local/bin/start-app.sh
+php artisan config:clear\n\
+php artisan key:generate --force\n\
+php artisan migrate --force || echo "Migrations ignoradas"\n\
+php-fpm -D && nginx -g "daemon off;"' > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
 
 EXPOSE 8080
-CMD ["/usr/local/bin/start-app.sh"]
+CMD ["/usr/local/bin/start.sh"]
