@@ -22,10 +22,14 @@ RUN printf "server {\n listen 80;\n root /var/www/html/public;\n index index.php
 
 RUN echo '#!/bin/sh\n\
 sed -i "s/listen 80;/listen ${PORT:-8080};/g" /etc/nginx/conf.d/default.conf\n\
-# LIMPEZA CRÍTICA\n\
+# FORÇA A CHAVE DIRETAMENTE NO AMBIENTE\n\
+export APP_KEY="base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w="\n\
+# LIMPEZA TOTAL DE CACHE E ARQUIVOS ANTIGOS\n\
+rm -f .env\n\
 rm -f bootstrap/cache/*.php\n\
 php artisan config:clear\n\
-php artisan key:generate --force\n\
+php artisan cache:clear\n\
+# Tenta rodar migrations sem travar o boot\n\
 php artisan migrate --force || echo "Migrations ignoradas"\n\
 php-fpm -D && nginx -g "daemon off;"' > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
 
