@@ -20,9 +20,6 @@ class AppServiceProvider extends ServiceProvider
          * O Laravel agora busca a APP_KEY do ambiente (Railway), 
          * garantindo que a criptografia funcione em qualquer servidor.
          */
-        Config::set('app.key', env('APP_KEY'));
-        Config::set('app.cipher', 'AES-256-CBC');
-        Config::set('jwt.secret', env('APP_KEY'));
     }
 
     /**
