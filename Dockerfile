@@ -17,10 +17,9 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # ============================================================
-# AÇÃO CRÍTICA: Sobrescreve a chave direto no arquivo de config
-# Isso remove qualquer dependência de .env ou cache para a chave
+# FORÇANDO A CHAVE NO ARQUIVO DE CONFIGURAÇÃO VIA PHP
 # ============================================================
-RUN sed -i "s/'key' => env('APP_KEY')/'key' => 'base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w='/g" config/app.php
+RUN php -r "\$path = 'config/app.php'; \$content = file_get_contents(\$path); \$content = preg_replace(\"/'key' => .*,/\", \"'key' => 'base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=',\", \$content); file_put_contents(\$path, \$content);"
 
 RUN chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage bootstrap/cache
 RUN rm -rf /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*
@@ -29,13 +28,13 @@ RUN printf "server {\n listen 80;\n root /var/www/html/public;\n index index.php
 
 RUN echo '#!/bin/sh\n\
 sed -i "s/listen 80;/listen ${PORT:-8080};/g" /etc/nginx/conf.d/default.conf\n\
-# Limpeza total antes de iniciar\n\
+# LIMPEZA TOTAL DE CACHE\n\
 rm -rf bootstrap/cache/*.php\n\
 php artisan config:clear\n\
 php artisan cache:clear\n\
-# Tenta rodar migrations (ignora erro de coluna duplicada)\n\
-php artisan migrate --force || echo "Migrations já executadas"\n\
-php-fpm -D && nginx -g "daemon off;"' > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
+# Tenta rodar migrations\n\
+php artisan migrate --force || echo \"Migrations ignoradas\"\n\
+php-fpm -D && nginx -g \"daemon off;\"' > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
 
 EXPOSE 8080
 CMD ["/usr/local/bin/start.sh"]
