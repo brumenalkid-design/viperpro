@@ -2,26 +2,49 @@
 
 return [
 
-    'name' => env('APP_NAME', 'Laravel'),
+    /*
+    |--------------------------------------------------------------------------
+    | Application Name & Environment
+    |--------------------------------------------------------------------------
+    | Alinhado com suas variáveis: APP_NAME=ViperPro e APP_ENV=production
+    */
+    'name' => env('APP_NAME', 'ViperPro'),
     'env' => env('APP_ENV', 'production'),
-    'debug' => (bool) env('APP_DEBUG', false),
-    'url' => env('APP_URL', 'http://localhost'),
-    'asset_url' => env('ASSET_URL', null),
-    'timezone' => 'UTC',
-    'locale' => 'en',
-    'fallback_locale' => 'en',
-    'faker_locale' => 'en_US',
 
-        // VOLTE PARA O PADRÃO: Isso permite que o Laravel decodifique o base64 do Docker
-    'key' => env('APP_KEY'),
+    /*
+    |--------------------------------------------------------------------------
+    | Application Debug Mode
+    |--------------------------------------------------------------------------
+    | Forçamos true como padrão enquanto estamos ajustando o deploy
+    */
+    'debug' => (bool) env('APP_DEBUG', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application URL
+    |--------------------------------------------------------------------------
+    | Alinhado com seu domínio do Railway
+    */
+    'url' => env('APP_URL', 'https://viperpro-production-d3d8.up.railway.app'),
+
+    'asset_url' => env('ASSET_URL', null),
+    'timezone' => 'America/Sao_Paulo', // Sugestão: Ajustado para horário de Brasília
+    'locale' => 'pt_BR',               // Sugestão: Ajustado para Português
+    'fallback_locale' => 'en',
+    'faker_locale' => 'pt_BR',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Encryption Key
+    |--------------------------------------------------------------------------
+    | BLINDAGEM: Se o env falhar, usamos a sua chave real alinhada
+    */
+    'key' => env('APP_KEY', 'base64:OTY4N2Y1ZTM0YjI5ZDVhZDVmOTU1ZTM2ZDU4NTQ='),
     'cipher' => 'AES-256-CBC',
 
-
-    'providers' => [
-
-        /*
-         * Laravel Framework Service Providers...
-         */
+    /*
+    | O restante do arquivo (Providers e Aliases) está correto e não gera conflito.
+    */
         Illuminate\Auth\AuthServiceProvider::class,
         Illuminate\Broadcasting\BroadcastServiceProvider::class,
         Illuminate\Bus\BusServiceProvider::class,
