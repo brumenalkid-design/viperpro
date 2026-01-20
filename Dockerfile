@@ -13,13 +13,7 @@ RUN sed -i 's|listen = .*|listen = 127.0.0.1:9000|' /usr/local/etc/php-fpm.d/zz-
 WORKDIR /var/www/html
 COPY . .
 
-# ============================================================
-# OPERAÇÃO "LIMPA TRILHO": Remove a trava do routes/web.php
-# ============================================================
-RUN sed -i "s/config(\['app.key' => .*\]);//g" routes/web.php
-RUN sed -i "s/config(\['jwt.secret' => .*\]);//g" routes/web.php
-
-# Injeta a chave correta no config/app.php (Plano de Fundo)
+# Injeta a chave correta no config/app.php de forma definitiva
 RUN sed -i "s/'key' => .*,/'key' => 'base64:uS68On6HInL6p9G6nS8z2mB1vC4xR7zN0jK3lM6pQ9w=',/g" config/app.php
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -31,7 +25,7 @@ RUN chown -R www-data:www-data storage bootstrap/cache && chmod -R 775 storage b
 RUN rm -rf /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*
 RUN echo 'server { listen 80; root /var/www/html/public; index index.php; location / { try_files $uri $uri/ /index.php?$query_string; } location ~ \.php$ { include fastcgi_params; fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; fastcgi_pass 127.0.0.1:9000; } }' > /etc/nginx/conf.d/default.conf
 
-# Script de inicialização limpo
+# Script de inicialização otimizado
 RUN echo '#!/bin/sh' > /usr/local/bin/start.sh
 RUN echo 'sed -i "s/listen 80;/listen ${PORT:-8080};/g" /etc/nginx/conf.d/default.conf' >> /usr/local/bin/start.sh
 RUN echo 'php artisan config:clear' >> /usr/local/bin/start.sh
